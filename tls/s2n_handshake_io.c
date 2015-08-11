@@ -198,9 +198,7 @@ static int read_full_handshake_message(struct s2n_connection *conn, uint8_t *mes
 /* Reading is a little more complicated than writing as the TLS RFCs allow content
  * types to be interleaved at the record layer. We may get an alert message
  * during the handshake phase, or messages of types that we don't support (e.g.
- * HEARTBEAT messages), or during renegotiations we may even get application
- * data messages that need to be handled by the application. The latter is punted
- * for now (s2n does support renegotiations).
+ * HEARTBEAT messages)
  */
 static int handshake_read_io(struct s2n_connection *conn)
 {
