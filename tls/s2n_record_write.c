@@ -35,24 +35,19 @@
 /* How much overhead does the IV, MAC, TAG and padding bytes introduce ? */
 static uint16_t overhead(struct s2n_connection *conn)
 {
-    struct s2n_crypto_parameters *active = conn->server;
+    struct s2n_crypto_parameters *param = &conn->param;
+    uint16_t extra = s2n_hmac_digest_size(param->cipher_suite->hmac_alg);
 
-    if (conn->mode == S2N_CLIENT) {
-        active = conn->client;
-    }
-
-    uint16_t extra = s2n_hmac_digest_size(active->cipher_suite->hmac_alg);
-
-    if (active->cipher_suite->cipher->type == S2N_CBC) {
+    if (param->cipher_suite->cipher->type == S2N_CBC) {
         /* Subtract one for the padding length byte */
         extra += 1;
 
         if (conn->actual_protocol_version > S2N_TLS10) {
-            extra += active->cipher_suite->cipher->io.cbc.record_iv_size;
+            extra += param->cipher_suite->cipher->io.cbc.record_iv_size;
         }
-    } else if (active->cipher_suite->cipher->type == S2N_AEAD) {
-        extra += active->cipher_suite->cipher->io.aead.tag_size;
-        extra += active->cipher_suite->cipher->io.aead.record_iv_size;
+    } else if (param->cipher_suite->cipher->type == S2N_AEAD) {
+        extra += param->cipher_suite->cipher->io.aead.tag_size;
+        extra += param->cipher_suite->cipher->io.aead.record_iv_size;
     }
 
     return extra;
@@ -61,15 +56,11 @@ static uint16_t overhead(struct s2n_connection *conn)
 int s2n_record_max_write_payload_size(struct s2n_connection *conn)
 {
     uint16_t max_fragment_size = conn->max_fragment_length;
-    struct s2n_crypto_parameters *active = conn->server;
-
-    if (conn->mode == S2N_CLIENT) {
-        active = conn->client;
-    }
+    struct s2n_crypto_parameters *param = &conn->param;
 
     /* Round the fragment size down to be block aligned */
-    if (active->cipher_suite->cipher->type == S2N_CBC) {
-        max_fragment_size -= max_fragment_size % active->cipher_suite->cipher->io.cbc.block_size;
+    if (param->cipher_suite->cipher->type == S2N_CBC) {
+        max_fragment_size -= max_fragment_size % param->cipher_suite->cipher->io.cbc.block_size;
     }
 
     return max_fragment_size - overhead(conn);
@@ -84,18 +75,17 @@ int s2n_record_write(struct s2n_connection *conn, uint8_t content_type, struct s
     uint8_t aad_gen[S2N_TLS_MAX_AAD_LEN] = { 0 };
     uint8_t aad_iv[S2N_TLS_MAX_IV_LEN] = { 0 };
 
-    uint8_t *sequence_number = conn->server->server_sequence_number;
-    struct s2n_hmac_state *mac = &conn->server->server_record_mac;
-    struct s2n_session_key *session_key = &conn->server->server_key;
-    struct s2n_cipher_suite *cipher_suite = conn->server->cipher_suite;
-    uint8_t *implicit_iv = conn->server->server_implicit_iv;
+    uint8_t *sequence_number = conn->param.server_sequence_number;
+    struct s2n_hmac_state *mac = &conn->param.server_record_mac;
+    struct s2n_session_key *session_key = &conn->param.server_key;
+    struct s2n_cipher_suite *cipher_suite = conn->param.cipher_suite;
+    uint8_t *implicit_iv = conn->param.server_implicit_iv;
 
     if (conn->mode == S2N_CLIENT) {
-        sequence_number = conn->client->client_sequence_number;
-        mac = &conn->client->client_record_mac;
-        session_key = &conn->client->client_key;
-        cipher_suite = conn->client->cipher_suite;
-        implicit_iv = conn->client->client_implicit_iv;
+        sequence_number = conn->param.client_sequence_number;
+        mac = &conn->param.client_record_mac;
+        session_key = &conn->param.client_key;
+        implicit_iv = conn->param.client_implicit_iv;
     }
 
     if (s2n_stuffer_data_available(&conn->out)) {

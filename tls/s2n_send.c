@@ -113,7 +113,7 @@ ssize_t s2n_send(struct s2n_connection *conn, void *buf, ssize_t size, int *more
             in.size = max_payload_size;
         }
 
-        if (conn->actual_protocol_version < S2N_TLS11 && conn->active.cipher_suite->cipher->type == S2N_CBC) {
+        if (conn->actual_protocol_version < S2N_TLS11 && conn->param.cipher_suite->cipher->type == S2N_CBC) {
             if (in.size > 1 && cbcHackUsed == 0) {
                 in.size = 1;
                 cbcHackUsed = 1;

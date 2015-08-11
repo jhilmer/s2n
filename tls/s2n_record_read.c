@@ -99,18 +99,17 @@ int s2n_record_parse(struct s2n_connection *conn)
     uint8_t aad_gen[S2N_TLS_MAX_AAD_LEN] = { 0 };
     uint8_t aad_iv[S2N_TLS_MAX_IV_LEN] = { 0 };
 
-    uint8_t *sequence_number = conn->client->client_sequence_number;
-    struct s2n_hmac_state *mac = &conn->client->client_record_mac;
-    struct s2n_session_key *session_key = &conn->client->client_key;
-    struct s2n_cipher_suite *cipher_suite = conn->client->cipher_suite;
-    uint8_t *implicit_iv = conn->client->client_implicit_iv;
+    uint8_t *sequence_number = conn->param.client_sequence_number;
+    struct s2n_hmac_state *mac = &conn->param.client_record_mac;
+    struct s2n_session_key *session_key = &conn->param.client_key;
+    struct s2n_cipher_suite *cipher_suite = conn->param.cipher_suite;
+    uint8_t *implicit_iv = conn->param.client_implicit_iv;
 
     if (conn->mode == S2N_CLIENT) {
-        sequence_number = conn->server->server_sequence_number;
-        mac = &conn->server->server_record_mac;
-        session_key = &conn->server->server_key;
-        cipher_suite = conn->server->cipher_suite;
-        implicit_iv = conn->server->server_implicit_iv;
+        sequence_number = conn->param.server_sequence_number;
+        mac = &conn->param.server_record_mac;
+        session_key = &conn->param.server_key;
+        implicit_iv = conn->param.server_implicit_iv;
     }
 
     GUARD(s2n_record_header_parse(conn, &content_type, &fragment_length));

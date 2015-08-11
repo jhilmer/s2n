@@ -47,7 +47,7 @@ int s2n_client_hello_recv(struct s2n_connection *conn)
     uint8_t client_protocol_version[S2N_TLS_PROTOCOL_VERSION_LEN];
 
     GUARD(s2n_stuffer_read_bytes(in, client_protocol_version, S2N_TLS_PROTOCOL_VERSION_LEN));
-    GUARD(s2n_stuffer_read_bytes(in, conn->pending.client_random, S2N_TLS_RANDOM_DATA_LEN));
+    GUARD(s2n_stuffer_read_bytes(in, conn->param.client_random, S2N_TLS_RANDOM_DATA_LEN));
     GUARD(s2n_stuffer_read_uint8(in, &session_id_len));
 
     conn->client_protocol_version = (client_protocol_version[0] * 10) + client_protocol_version[1];
@@ -75,7 +75,7 @@ int s2n_client_hello_recv(struct s2n_connection *conn)
     GUARD(s2n_stuffer_skip_read(in, compression_methods));
 
     /* This is going to be our default if the client has no preference. */
-    conn->pending.server_ecc_params.negotiated_curve = &s2n_ecc_supported_curves[0];
+    conn->param.server_ecc_params.negotiated_curve = &s2n_ecc_supported_curves[0];
 
     if (s2n_stuffer_data_available(in) >= 2) {
         /* Read extensions if they are present */
@@ -94,7 +94,7 @@ int s2n_client_hello_recv(struct s2n_connection *conn)
 
     /* Now choose the ciphers and the cert chain. */
     GUARD(s2n_set_cipher_as_tls_server(conn, cipher_suites, cipher_suites_length / 2));
-    conn->server->chosen_cert_chain = conn->config->cert_and_key_pairs;
+    conn->param.chosen_cert_chain = conn->config->cert_and_key_pairs;
 
     conn->handshake.next_state = SERVER_HELLO;
 
@@ -110,7 +110,7 @@ int s2n_client_hello_send(struct s2n_connection *conn)
     uint8_t session_id_len = 0;
     uint8_t client_protocol_version[S2N_TLS_PROTOCOL_VERSION_LEN];
 
-    b.data = conn->pending.client_random;
+    b.data = conn->param.client_random;
     b.size = S2N_TLS_RANDOM_DATA_LEN;
 
     /* Create the client random data */
@@ -182,7 +182,7 @@ int s2n_sslv2_client_hello_recv(struct s2n_connection *conn)
     GUARD(s2n_set_cipher_as_sslv2_server(conn, cipher_suites, cipher_suites_length / S2N_SSLv2_CIPHER_SUITE_LEN));
 
     struct s2n_blob b;
-    b.data = conn->pending.client_random;
+    b.data = conn->param.client_random;
     b.size = S2N_TLS_RANDOM_DATA_LEN;
 
     b.data += S2N_TLS_RANDOM_DATA_LEN - challenge_length;
@@ -190,7 +190,7 @@ int s2n_sslv2_client_hello_recv(struct s2n_connection *conn)
 
     GUARD(s2n_stuffer_read(in, &b));
 
-    conn->server->chosen_cert_chain = conn->config->cert_and_key_pairs;
+    conn->param.chosen_cert_chain = conn->config->cert_and_key_pairs;
     conn->client_hello_version = S2N_SSLv2;
     conn->handshake.next_state = SERVER_HELLO;
 

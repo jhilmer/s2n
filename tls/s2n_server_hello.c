@@ -56,12 +56,12 @@ int s2n_server_hello_recv(struct s2n_connection *conn)
         S2N_ERROR(S2N_ERR_BAD_MESSAGE);
     }
 
-    conn->pending.signature_digest_alg = S2N_HASH_MD5_SHA1;
+    conn->param.signature_digest_alg = S2N_HASH_MD5_SHA1;
     if (conn->actual_protocol_version == S2N_TLS12) {
-        conn->pending.signature_digest_alg = S2N_HASH_SHA1;
+        conn->param.signature_digest_alg = S2N_HASH_SHA1;
     }
 
-    GUARD(s2n_stuffer_read_bytes(in, conn->pending.server_random, S2N_TLS_RANDOM_DATA_LEN));
+    GUARD(s2n_stuffer_read_bytes(in, conn->param.server_random, S2N_TLS_RANDOM_DATA_LEN));
     GUARD(s2n_stuffer_read_uint8(in, &session_id_len));
 
     if (session_id_len > S2N_TLS_SESSION_ID_LEN) {
@@ -110,7 +110,7 @@ int s2n_server_hello_send(struct s2n_connection *conn)
     uint8_t session_id_len = 0;
     uint8_t protocol_version[S2N_TLS_PROTOCOL_VERSION_LEN];
 
-    b.data = conn->pending.server_random;
+    b.data = conn->param.server_random;
     b.size = S2N_TLS_RANDOM_DATA_LEN;
 
     /* Create the server random data */
@@ -129,15 +129,15 @@ int s2n_server_hello_send(struct s2n_connection *conn)
     protocol_version[0] = conn->actual_protocol_version / 10;
     protocol_version[1] = conn->actual_protocol_version % 10;
 
-    conn->pending.signature_digest_alg = S2N_HASH_MD5_SHA1;
+    conn->param.signature_digest_alg = S2N_HASH_MD5_SHA1;
     if (conn->actual_protocol_version == S2N_TLS12) {
-        conn->pending.signature_digest_alg = S2N_HASH_SHA1;
+        conn->param.signature_digest_alg = S2N_HASH_SHA1;
     }
 
     GUARD(s2n_stuffer_write_bytes(out, protocol_version, S2N_TLS_PROTOCOL_VERSION_LEN));
-    GUARD(s2n_stuffer_write_bytes(out, conn->pending.server_random, S2N_TLS_RANDOM_DATA_LEN));
+    GUARD(s2n_stuffer_write_bytes(out, conn->param.server_random, S2N_TLS_RANDOM_DATA_LEN));
     GUARD(s2n_stuffer_write_uint8(out, session_id_len));
-    GUARD(s2n_stuffer_write_bytes(out, conn->pending.cipher_suite->value, S2N_TLS_CIPHER_SUITE_LEN));
+    GUARD(s2n_stuffer_write_bytes(out, conn->param.cipher_suite->value, S2N_TLS_CIPHER_SUITE_LEN));
     GUARD(s2n_stuffer_write_uint8(out, S2N_TLS_COMPRESSION_METHOD_NULL));
 
     GUARD(s2n_server_extensions_send(conn, out));

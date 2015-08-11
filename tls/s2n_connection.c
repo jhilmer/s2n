@@ -101,19 +101,17 @@ static int s2n_connection_free_keys(struct s2n_connection *conn)
 {
     /* Destroy any keys - we call destroy on the pending object as that is where
      * keys are allocated. */
-    if (conn->pending.cipher_suite && conn->pending.cipher_suite->cipher->destroy_key) {
-        GUARD(conn->pending.cipher_suite->cipher->destroy_key(&conn->pending.client_key));
-        GUARD(conn->pending.cipher_suite->cipher->destroy_key(&conn->pending.server_key));
+    if (conn->param.cipher_suite && conn->param.cipher_suite->cipher->destroy_key) {
+        GUARD(conn->param.cipher_suite->cipher->destroy_key(&conn->param.client_key));
+        GUARD(conn->param.cipher_suite->cipher->destroy_key(&conn->param.server_key));
     }
 
     /* Free any pending server key received (we may not have completed a
      * handshake, so this may not have been free'd yet) */
-    GUARD(s2n_rsa_public_key_free(&conn->pending.server_rsa_public_key));
+    GUARD(s2n_rsa_public_key_free(&conn->param.server_rsa_public_key));
 
-    GUARD(s2n_dh_params_free(&conn->pending.server_dh_params));
-    GUARD(s2n_dh_params_free(&conn->active.server_dh_params));
-    GUARD(s2n_ecc_params_free(&conn->pending.server_ecc_params));
-    GUARD(s2n_ecc_params_free(&conn->active.server_ecc_params));
+    GUARD(s2n_dh_params_free(&conn->param.server_dh_params));
+    GUARD(s2n_ecc_params_free(&conn->param.server_ecc_params));
 
     GUARD(s2n_free(&conn->status_response));
 
@@ -208,10 +206,7 @@ int s2n_connection_wipe(struct s2n_connection *conn)
 
     conn->mode = mode;
     conn->config = config;
-    conn->active.cipher_suite = &s2n_null_cipher_suite;
-    conn->pending.cipher_suite = &s2n_null_cipher_suite;
-    conn->server = &conn->active;
-    conn->client = &conn->active;
+    conn->param.cipher_suite = &s2n_null_cipher_suite;
     conn->max_fragment_length = S2N_DEFAULT_FRAGMENT_LENGTH;
     conn->handshake.state = CLIENT_HELLO;
     GUARD(s2n_hash_init(&conn->handshake.client_md5, S2N_HASH_MD5));
@@ -220,8 +215,8 @@ int s2n_connection_wipe(struct s2n_connection *conn)
     GUARD(s2n_hash_init(&conn->handshake.server_md5, S2N_HASH_MD5));
     GUARD(s2n_hash_init(&conn->handshake.server_sha1, S2N_HASH_SHA1));
     GUARD(s2n_hash_init(&conn->handshake.server_sha256, S2N_HASH_SHA256));
-    GUARD(s2n_hmac_init(&conn->client->client_record_mac, S2N_HMAC_NONE, NULL, 0));
-    GUARD(s2n_hmac_init(&conn->server->server_record_mac, S2N_HMAC_NONE, NULL, 0));
+    GUARD(s2n_hmac_init(&conn->param.client_record_mac, S2N_HMAC_NONE, NULL, 0));
+    GUARD(s2n_hmac_init(&conn->param.server_record_mac, S2N_HMAC_NONE, NULL, 0));
 
     memcpy_check(&conn->alert_in, &alert_in, sizeof(struct s2n_stuffer));
     memcpy_check(&conn->reader_alert_out, &reader_alert_out, sizeof(struct s2n_stuffer));
@@ -270,7 +265,7 @@ uint64_t s2n_connection_get_wire_bytes_out(struct s2n_connection *conn)
 
 const char *s2n_connection_get_cipher(struct s2n_connection *conn)
 {
-    return conn->active.cipher_suite->name;
+    return conn->param.cipher_suite->name;
 }
 
 int s2n_connection_get_client_protocol_version(struct s2n_connection *conn)

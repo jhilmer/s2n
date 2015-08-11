@@ -60,12 +60,7 @@ struct s2n_connection {
     uint8_t actual_protocol_version_established;
 
     /* Our crypto paramaters */
-    struct s2n_crypto_parameters active;
-    struct s2n_crypto_parameters pending;
-
-    /* Which set is the client/server actually using? */
-    struct s2n_crypto_parameters *client;
-    struct s2n_crypto_parameters *server;
+    struct s2n_crypto_parameters param;
 
     /* The PRF needs some storage elements to work with */
     union s2n_prf_working_space prf_space;

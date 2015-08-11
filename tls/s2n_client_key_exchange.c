@@ -50,7 +50,7 @@ static int s2n_rsa_client_key_recv(struct s2n_connection *conn)
 
     /* Decrypt the pre-master secret */
     struct s2n_blob pms, encrypted;
-    pms.data = conn->pending.rsa_premaster_secret;
+    pms.data = conn->param.rsa_premaster_secret;
     pms.size = S2N_TLS_SECRET_LEN;
 
     encrypted.size = s2n_stuffer_data_available(in);
@@ -60,8 +60,8 @@ static int s2n_rsa_client_key_recv(struct s2n_connection *conn)
 
     /* First: use a random pre-master secret */
     GUARD(s2n_get_private_random_data(&pms));
-    conn->pending.rsa_premaster_secret[0] = client_protocol_version[0];
-    conn->pending.rsa_premaster_secret[1] = client_protocol_version[1];
+    conn->param.rsa_premaster_secret[0] = client_protocol_version[0];
+    conn->param.rsa_premaster_secret[1] = client_protocol_version[1];
 
 
     /* Set rsa_failed to 1 if s2n_rsa_decrypt returns anything other than zero */
@@ -87,10 +87,10 @@ static int s2n_dhe_client_key_recv(struct s2n_connection *conn)
     struct s2n_blob shared_key;
 
     /* Get the shared key */
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
-        GUARD(s2n_ecc_compute_shared_secret_as_server(&conn->pending.server_ecc_params, in, &shared_key));
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
+        GUARD(s2n_ecc_compute_shared_secret_as_server(&conn->param.server_ecc_params, in, &shared_key));
     } else {
-        GUARD(s2n_dh_compute_shared_secret_as_server(&conn->pending.server_dh_params, in, &shared_key));
+        GUARD(s2n_dh_compute_shared_secret_as_server(&conn->param.server_dh_params, in, &shared_key));
     }
 
     /* Turn the pre-master secret into a master secret */
@@ -101,10 +101,10 @@ static int s2n_dhe_client_key_recv(struct s2n_connection *conn)
     GUARD(s2n_free(&shared_key));
 
     /* We don't need the server params any more */
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
-        GUARD(s2n_ecc_params_free(&conn->pending.server_ecc_params));
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
+        GUARD(s2n_ecc_params_free(&conn->param.server_ecc_params));
     } else {
-        GUARD(s2n_dh_params_free(&conn->pending.server_dh_params));
+        GUARD(s2n_dh_params_free(&conn->param.server_dh_params));
     }
 
     conn->handshake.next_state = CLIENT_CHANGE_CIPHER_SPEC;
@@ -114,7 +114,7 @@ static int s2n_dhe_client_key_recv(struct s2n_connection *conn)
 
 int s2n_client_key_recv(struct s2n_connection *conn)
 {
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_DH) {
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_DH) {
         return s2n_dhe_client_key_recv(conn);
     } else {
         return s2n_rsa_client_key_recv(conn);
@@ -128,10 +128,10 @@ static int s2n_dhe_client_key_send(struct s2n_connection *conn)
     struct s2n_stuffer *out = &conn->handshake.io;
     struct s2n_blob shared_key;
 
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
-        GUARD(s2n_ecc_compute_shared_secret_as_client(&conn->pending.server_ecc_params, out, &shared_key));
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
+        GUARD(s2n_ecc_compute_shared_secret_as_client(&conn->param.server_ecc_params, out, &shared_key));
     } else {
-        GUARD(s2n_dh_compute_shared_secret_as_client(&conn->pending.server_dh_params, out, &shared_key));
+        GUARD(s2n_dh_compute_shared_secret_as_client(&conn->param.server_dh_params, out, &shared_key));
     }
 
     /* Turn the pre-master secret into a master secret */
@@ -142,10 +142,10 @@ static int s2n_dhe_client_key_send(struct s2n_connection *conn)
     GUARD(s2n_free(&shared_key));
 
     /* We don't need the server params any more */
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
-        GUARD(s2n_ecc_params_free(&conn->pending.server_ecc_params));
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC) {
+        GUARD(s2n_ecc_params_free(&conn->param.server_ecc_params));
     } else {
-        GUARD(s2n_dh_params_free(&conn->pending.server_dh_params));
+        GUARD(s2n_dh_params_free(&conn->param.server_dh_params));
     }
 
     conn->handshake.next_state = CLIENT_CHANGE_CIPHER_SPEC;
@@ -161,15 +161,15 @@ static int s2n_rsa_client_key_send(struct s2n_connection *conn)
 
 
     struct s2n_blob pms;
-    pms.data = conn->pending.rsa_premaster_secret;
+    pms.data = conn->param.rsa_premaster_secret;
     pms.size = S2N_TLS_SECRET_LEN;
 
     GUARD(s2n_get_private_random_data(&pms));
 
     /* Over-write the first two bytes with the client protocol version, per RFC2246 7.4.7.1 */
-    memcpy_check(conn->pending.rsa_premaster_secret, client_protocol_version, S2N_TLS_PROTOCOL_VERSION_LEN);
+    memcpy_check(conn->param.rsa_premaster_secret, client_protocol_version, S2N_TLS_PROTOCOL_VERSION_LEN);
 
-    int encrypted_size = s2n_rsa_public_encrypted_size(&conn->pending.server_rsa_public_key);
+    int encrypted_size = s2n_rsa_public_encrypted_size(&conn->param.server_rsa_public_key);
     if (encrypted_size < 0 || encrypted_size > 0xffff) {
         S2N_ERROR(S2N_ERR_SIZE_MISMATCH);
     }
@@ -184,10 +184,10 @@ static int s2n_rsa_client_key_send(struct s2n_connection *conn)
     notnull_check(encrypted.data);
 
     /* Encrypt the secret and send it on */
-    GUARD(s2n_rsa_encrypt(&conn->pending.server_rsa_public_key, &pms, &encrypted));
+    GUARD(s2n_rsa_encrypt(&conn->param.server_rsa_public_key, &pms, &encrypted));
 
     /* We don't need the key any more, so free it */
-    GUARD(s2n_rsa_public_key_free(&conn->pending.server_rsa_public_key));
+    GUARD(s2n_rsa_public_key_free(&conn->param.server_rsa_public_key));
 
     /* Turn the pre-master secret into a master secret */
     GUARD(s2n_prf_master_secret(conn, &pms));
@@ -202,7 +202,7 @@ static int s2n_rsa_client_key_send(struct s2n_connection *conn)
 
 int s2n_client_key_send(struct s2n_connection *conn)
 {
-    if (conn->pending.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_DH) {
+    if (conn->param.cipher_suite->key_exchange_alg->flags & S2N_KEY_EXCHANGE_DH) {
         return s2n_dhe_client_key_send(conn);
     } else {
         return s2n_rsa_client_key_send(conn);

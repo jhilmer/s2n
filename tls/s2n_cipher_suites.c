@@ -85,8 +85,8 @@ struct s2n_cipher_suite *s2n_cipher_suite_match(uint8_t cipher_suite[S2N_TLS_CIP
 int s2n_set_cipher_as_client(struct s2n_connection *conn, uint8_t wire[S2N_TLS_CIPHER_SUITE_LEN])
 {
     /* See if the pending cipher is one we support */
-    conn->pending.cipher_suite = s2n_cipher_suite_match(wire);
-    if (conn->pending.cipher_suite == NULL) {
+    conn->param.cipher_suite = s2n_cipher_suite_match(wire);
+    if (conn->param.cipher_suite == NULL) {
         S2N_ERROR(S2N_ERR_CIPHER_NOT_SUPPORTED);
     }
 
@@ -126,11 +126,11 @@ static int s2n_set_cipher_as_server(struct s2n_connection *conn, uint8_t *wire, 
                     continue;
                 }
                 /* Don't choose EC ciphers if the curve was not agreed upon. */
-                if (conn->pending.server_ecc_params.negotiated_curve == NULL && (match->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC)) {
+                if (conn->param.server_ecc_params.negotiated_curve == NULL && (match->key_exchange_alg->flags & S2N_KEY_EXCHANGE_ECC)) {
                     continue;
                 }
 
-                conn->pending.cipher_suite = match;
+                conn->param.cipher_suite = match;
                 return 0;
             }
         }
